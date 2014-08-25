@@ -3,6 +3,7 @@
 namespace Unm\Laravel\OpenCloud;
 
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Cache;
 use OpenCloud\Rackspace;
 use OpenCloud\OpenStack;
 
@@ -17,12 +18,30 @@ class OpenCloud {
 
     public function getRackspace()
     {
-        return new Rackspace($this->config['rackspace']['endpoint'], $this->config['rackspace']['auth']);
+        $client = new Rackspace($this->config['rackspace']['endpoint'], $this->config['rackspace']['auth']);
+        return $this->checkCache($client);
     }
 
     public function getOpenStack()
     {
-        return new OpenStack($this->config['openstack']['endpoint'], $this->config['openstack']['auth']);
+        $client = new OpenStack($this->config['openstack']['endpoint'], $this->config['openstack']['auth']);
+        return $this->checkCache($client);
+    }
+
+    private function checkCache($client)
+    {
+        if ($token = Cache::get(get_class($client).'.token')) {
+            $client->importCredentials($token);
+        }
+
+        $token = $client->getTokenObject();
+
+        if (!$token || ($token && $token->hasExpired())) {
+            $client->authenticate();
+            Cache::forever(get_class($client).'.token', $client->exportCredentials());
+        }
+
+        return $client;
     }
 
 }

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Facade;
 /**
  * Facade for the OpenCloud service
  */
-class OpenCLoudFacade extends Facade
+class OpenCloudFacade extends Facade
 {
     /**
      * Get the registered name of the component.
