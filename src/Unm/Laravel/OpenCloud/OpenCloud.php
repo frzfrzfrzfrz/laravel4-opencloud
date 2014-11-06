@@ -31,7 +31,10 @@ class OpenCloud {
     private function checkCache($client)
     {
         if ($token = Cache::get(get_class($client).'.token')) {
-            $client->importCredentials($token);
+            $expired = isset($token['expiration']) && (time() >= strtotime($token['expiration']));
+            if (!$expired) {
+                $client->importCredentials($token);
+            }
         }
 
         $token = $client->getTokenObject();
