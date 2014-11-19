@@ -2,14 +2,15 @@
 
 namespace Unm\Laravel\OpenCloud;
 
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Cache;
 use OpenCloud\Rackspace;
 use OpenCloud\OpenStack;
+use OpenCloud\Image\Service as ImageService;
+use OpenCloud\Compute\Service as ComputeService;
 
 class OpenCloud {
 
     private $config;
+    private $client;
 
     public function __construct($config)
     {
@@ -18,33 +19,37 @@ class OpenCloud {
 
     public function getRackspace()
     {
-        $client = new Rackspace($this->config['rackspace']['endpoint'], $this->config['rackspace']['auth']);
-        return $this->checkCache($client);
+        return new Rackspace($this->config['rackspace']['endpoint'], $this->config['rackspace']['auth']);
     }
 
+    /**
+     * @return OpenStack
+     */
     public function getOpenStack()
     {
-        $client = new OpenStack($this->config['openstack']['endpoint'], $this->config['openstack']['auth']);
-        return $this->checkCache($client);
+        if (!$this->client) {
+            $this->client = new OpenStack($this->config['openstack']['endpoint'], $this->config['openstack']['auth']);
+            $this->client->authenticate();
+        }
+        return $this->client;
     }
-
-    private function checkCache($client)
+    
+    /**
+     * @return ImageService
+     */
+    public function imageService()
     {
-        if ($token = Cache::get(get_class($client).'.token')) {
-            $expired = isset($token['expiration']) && (time() >= strtotime($token['expiration']));
-            if (!$expired) {
-                $client->importCredentials($token);
-            }
-        }
-
-        $token = $client->getTokenObject();
-
-        if (!$token || ($token && $token->hasExpired())) {
-            $client->authenticate();
-            Cache::forever(get_class($client).'.token', $client->exportCredentials());
-        }
-
-        return $client;
+        $imageService = $this->getOpenStack()->imageService('glance', 'RegionOne');
+        /* @var $imageService ImageService */
+        $imageService->getEndpoint()->getPublicUrl()->setPath('/v2.0'); // fix url
+        return $imageService;
     }
-
+    
+    /**
+     * @return ComputeService
+     */
+    public function computeService()
+    {
+        return $this->getOpenStack()->computeService('nova', 'RegionOne');
+    }
 }
