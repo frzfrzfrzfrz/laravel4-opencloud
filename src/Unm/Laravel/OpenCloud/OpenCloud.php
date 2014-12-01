@@ -52,4 +52,14 @@ class OpenCloud {
     {
         return $this->getOpenStack()->computeService('nova', 'RegionOne');
     }
+
+    public function networkCollection($filters = [])
+    {
+        $compute = $this->computeService('nova', 'RegionOne');
+
+        $url = $compute->getUrl('os-networks', $filters);
+
+        return $compute->collection('OpenCloud\Compute\Resource\Network', $url);
+    }
+
 }
