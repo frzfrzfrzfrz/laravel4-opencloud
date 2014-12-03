@@ -62,4 +62,28 @@ class OpenCloud {
         return $compute->collection('OpenCloud\Compute\Resource\Network', $url);
     }
 
+    /**
+     * I didn't find appropriate collection for handling requests for floating-ips
+     */
+    public function floatingIpsCollection($filters = [])
+    {
+        $os    = $this->getOpenStack();
+        $token = $os->getToken();
+
+        $compute = $os->computeService('nova', 'RegionOne');
+
+        $obj = $compute->getUrl('os-floating-ips', $filters);
+
+        $client = new \Guzzle\Http\Client();
+
+        $request = $client->get((string)$obj);
+        $request->addHeader('X-Auth-Token', $token);
+        $request->addHeader('Content-Type', 'application/json');
+        $request->addHeader('Accept', 'application/json');
+        $response = $request->send();
+
+        $ips = json_decode($response->getBody(), true);
+
+        return $ips;
+    }
 }
